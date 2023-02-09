@@ -10,7 +10,7 @@ dotenv.config();
 const app = express();
 app.use(cors());
 app.use(express.json({}));
-const port = 8900;
+const port = process.env.PORT || 8900;
 
 function distance(lat1, lon1, lat2, lon2) {
   const radius = 6371; // Earth's radius in kilometers
