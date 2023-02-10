@@ -45,7 +45,7 @@ app.post("/closest-store", async (req, res) => {
     }
 
     const response = await axios.get(
-      `https://maps.googleapis.com/maps/api/geocode/json?address=${location}&key=${apiKey}`
+      `https://maps.googleapis.com/maps/api/geocode/json?address=${location},Australia&key=${apiKey}`
     );
     const origin = response.data.results[0].geometry.location;
 
