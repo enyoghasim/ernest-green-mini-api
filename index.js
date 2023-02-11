@@ -2,14 +2,65 @@ const express = require("express");
 const axios = require("axios");
 const dotenv = require("dotenv");
 const cors = require("cors");
+const mongoose = require("mongoose");
+// const stores = require("./stores.json");
 
-const stores = require("./stores.json");
+const AdminJS = require("adminjs");
+const AdminJSExpress = require("@adminjs/express");
+// import * as AdminJSMongoose from "@adminjs/mongoose";
+const AdminJSMongoose = require("@adminjs/mongoose");
+const store = require("./stores.model");
+// const session = require("express-session");
+
+// const ConnectSession = Connect(session);
+
+// const sessionStore = new ConnectSession({});
+
+AdminJS.registerAdapter({
+  Resource: AdminJSMongoose.Resource,
+  Database: AdminJSMongoose.Database,
+});
+const adminjs = new AdminJS({
+  resources: [store],
+});
+
+const DEFAULT_ADMIN = {
+  email: "admin@example.com",
+  password: "password",
+};
+
+const authenticate = async (email, password) => {
+  if (email === DEFAULT_ADMIN.email && password === DEFAULT_ADMIN.password) {
+    return Promise.resolve(DEFAULT_ADMIN);
+  }
+  return null;
+};
+
+const adminRouter = AdminJSExpress.buildAuthenticatedRouter(
+  adminjs,
+  {
+    cookieName: "adminjs",
+    cookiePassword: "complicatedsecurepassword",
+    authenticate,
+  },
+  null,
+  {
+    resave: false,
+    saveUninitialized: true,
+  }
+);
+adminjs.watch();
 
 dotenv.config();
 
 const app = express();
 app.use(cors());
 app.use(express.json({}));
+app.use(adminjs.options.rootPath, adminRouter);
+
+if (process.env.NODE_ENV === "development") {
+  adminjs.watch();
+}
 const port = process.env.PORT || 8900;
 
 function distance(lat1, lon1, lat2, lon2) {
@@ -34,6 +85,12 @@ function toRadians(degrees) {
 }
 
 app.post("/closest-store", async (req, res) => {
+  let stores;
+  try {
+    stores = await store.find({});
+  } catch {
+    return res.status(200).send([]);
+  }
   try {
     let { location, radius } = req.body;
     radius = radius || 10;
@@ -84,9 +141,20 @@ app.post("/closest-store", async (req, res) => {
   }
 });
 
-app.listen(port, () => {
-  console.log(`Server listening at http://localhost:${port}`);
-});
+mongoose
+  .connect(process.env.MONGO_DB_URL)
+
+  .then(async (e) => {
+    console.log("mongodb started");
+  })
+  .then(() => {
+    app.listen(port, () => {
+      // console.log(`Server listening at http://localhost:${port}`);
+      console.log(
+        `AdminJS started on http://localhost:${port}${adminjs.options.rootPath}`
+      );
+    });
+  });
 
 // storeDistances.push({
 //   name: store.name,
