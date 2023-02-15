@@ -10,6 +10,8 @@ const AdminJSExpress = require("@adminjs/express");
 // import * as AdminJSMongoose from "@adminjs/mongoose";
 const AdminJSMongoose = require("@adminjs/mongoose");
 const store = require("./stores.model");
+const admins = require("./admin.model");
+const { compareSync } = require("bcryptjs");
 // const session = require("express-session");
 
 // const ConnectSession = Connect(session);
@@ -21,7 +23,7 @@ AdminJS.registerAdapter({
   Database: AdminJSMongoose.Database,
 });
 const adminjs = new AdminJS({
-  resources: [store],
+  resources: [store, admins],
 });
 
 const DEFAULT_ADMIN = {
@@ -30,8 +32,26 @@ const DEFAULT_ADMIN = {
 };
 
 const authenticate = async (email, password) => {
-  if (email === DEFAULT_ADMIN.email && password === DEFAULT_ADMIN.password) {
-    return Promise.resolve(DEFAULT_ADMIN);
+  // if (email === DEFAULT_ADMIN.email && password === DEFAULT_ADMIN.password) {
+  //   return Promise.resolve(DEFAULT_ADMIN);
+  // }
+  try {
+    const userDetails = await admins.findOne({ email });
+    if (userDetails) {
+      //compare password
+      const { password: hashedPassword } = userDetails;
+
+      const isPasswordValid = await compareSync(password, hashedPassword);
+      if (isPasswordValid) {
+        return Promise.resolve(userDetails);
+      } else {
+        return null;
+      }
+    } else {
+      return null;
+    }
+  } catch {
+    return null;
   }
   return null;
 };
